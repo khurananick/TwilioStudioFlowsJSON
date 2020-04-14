@@ -42,7 +42,7 @@
           "y": 490
         },
         "body": "Sorry, we were not able to process this request.",
-        "from": "+12342184301",
+        "from": "<YOUR_TWILIO_NUMBER>",
         "to": "{{trigger.message.From}}",
         "media_url": null,
         "service": "{{trigger.message.InstanceSid}}",

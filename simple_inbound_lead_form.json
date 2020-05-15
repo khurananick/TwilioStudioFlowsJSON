@@ -1,0 +1,266 @@
+{
+  "description": "A New Flow",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "next": "GetLeadDataFromSalesforce",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "incomingCall"
+        },
+        {
+          "next": "GetLeadDataFromSalesforce",
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -300,
+          "y": -20
+        }
+      }
+    },
+    {
+      "name": "GetLeadDataFromSalesforce",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "CheckIfLeadExists",
+          "event": "success"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 20,
+          "y": 240
+        },
+        "method": "GET",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "parameters": [
+          {
+            "value": "{{trigger.message.From}}",
+            "key": "Phone"
+          }
+        ],
+        "url": "https://serverless-7933-dev.twil.io/salesforce/get"
+      }
+    },
+    {
+      "name": "CheckIfLeadExists",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "AskProductName",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "No Record Found",
+              "arguments": [
+                "{{widgets.GetLeadDataFromSalesforce.body}}"
+              ],
+              "type": "equal_to",
+              "value": "{}"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.GetLeadDataFromSalesforce.body}}",
+        "offset": {
+          "x": -20,
+          "y": 470
+        }
+      }
+    },
+    {
+      "name": "AskProductName",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "AskFirstName",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -590,
+          "y": 220
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Hi there! I'm Botsie and I will help you find the right person to speak with. To start with, which product or service were you interested in learning more about?",
+        "timeout": 3600
+      }
+    },
+    {
+      "name": "AskFirstName",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "AskLastName",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -370,
+          "y": 380
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Thank you, I can help you learn more about {{widgets.AskProductName.inbound.Body}}. And what is your first name?",
+        "timeout": 3600
+      }
+    },
+    {
+      "name": "AskLastName",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "AskCompanyName",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -640,
+          "y": 560
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Great, thanks {{widgets.AskFirstName.inbound.Body}}. How about your last name?",
+        "timeout": 3600
+      }
+    },
+    {
+      "name": "AskCompanyName",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "SaveLeadToSalesforce",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -340,
+          "y": 720
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Thanks {{widgets.AskFirstName.inbound.Body}} {{widgets.AskLastName.inbound.Body}}. What is your business' name?",
+        "timeout": 3600
+      }
+    },
+    {
+      "name": "SaveLeadToSalesforce",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "ConfirmToUser",
+          "event": "success"
+        },
+        {
+          "next": "ConfirmToUser",
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -640,
+          "y": 890
+        },
+        "method": "POST",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "parameters": [
+          {
+            "value": "{{trigger.message.From}}",
+            "key": "Phone"
+          },
+          {
+            "value": "{{widgets.AskFirstName.inbound.Body}}",
+            "key": "FirstName"
+          },
+          {
+            "value": "{{widgets.AskLastName.inbound.Body}}",
+            "key": "LastName"
+          },
+          {
+            "value": "{{widgets.AskCompanyName.inbound.Body}}",
+            "key": "Company"
+          },
+          {
+            "value": "{{widgets.AskProductName.inbound.Body}}",
+            "key": "BotCollectedData"
+          }
+        ],
+        "url": "http://serverless-7933-dev.twil.io/salesforce/create"
+      }
+    },
+    {
+      "name": "ConfirmToUser",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -380,
+          "y": 1060
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Awesome, thanks {{widgets.AskFirstName.inbound.Body}}. Someone on my team will be in touch very shortly!"
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}
